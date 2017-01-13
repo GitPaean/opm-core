@@ -337,7 +337,7 @@ namespace Opm
         // TODO: not sure whether this is the correct thing to do here.
         DynamicListEconLimited dummy_list_econ_limited;
         init(eclipseState, timeStep, UgGridHelpers::numCells(grid),
-             UgGridHelpers::globalCell(grid), UgGridHelpers::cartDims(grid), 
+             UgGridHelpers::globalCell(grid), UgGridHelpers::cartDims(grid),
              UgGridHelpers::dimensions(grid),
              UgGridHelpers::cell2Faces(grid), UgGridHelpers::beginFaceCentroids(grid),
              permeability, dummy_list_econ_limited, dummy_well_potentials,
@@ -459,7 +459,7 @@ namespace Opm
                 const WellInjectionProperties& injectionProperties = well->getInjectionProperties(timeStep);
                 int ok = 1;
                 int control_pos[5] = { -1, -1, -1, -1, -1 };
-                                
+
                 clear_well_controls(well_index, w_);
                 if (injectionProperties.hasInjectionControl(WellInjector::RATE)) {
                     control_pos[WellsManagerDetail::InjectionControl::RATE] = well_controls_get_num(w_->ctrls[well_index]);
@@ -475,7 +475,7 @@ namespace Opm
                     }
 
                     ok = append_well_controls(SURFACE_RATE,
-                                              injectionProperties.surfaceInjectionRate, 
+                                              injectionProperties.surfaceInjectionRate,
                                               invalid_alq,
                                               invalid_vfp,
                                               distr,
@@ -497,7 +497,7 @@ namespace Opm
                     }
 
                     ok = append_well_controls(RESERVOIR_RATE,
-                                              injectionProperties.reservoirInjectionRate, 
+                                              injectionProperties.reservoirInjectionRate,
                                               invalid_alq,
                                               invalid_vfp,
                                               distr,
@@ -575,9 +575,13 @@ namespace Opm
                 const WellProductionProperties& productionProperties = well->getProductionProperties(timeStep);
                 int control_pos[9] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
                 int ok = 1;
-                
+
                 clear_well_controls(well_index, w_);
-                if (ok && productionProperties.hasProductionControl(WellProducer::ORAT)) {
+                const bool has_ORAT_control = (productionProperties.hasProductionControl(WellProducer::ORAT) &&
+                                               productionProperties.predictionMode) ||
+                                              (productionProperties.controlMode == WellProducer::ORAT &&
+                                               !productionProperties.predictionMode);
+                if (ok && has_ORAT_control) {
                     if (!phaseUsage.phase_used[BlackoilPhases::Liquid]) {
                         OPM_THROW(std::runtime_error, "Oil phase not active and ORAT control specified.");
                     }
@@ -594,7 +598,11 @@ namespace Opm
                                               w_);
                 }
 
-                if (ok && productionProperties.hasProductionControl(WellProducer::WRAT)) {
+                const bool has_WRAT_control = (productionProperties.hasProductionControl(WellProducer::WRAT) &&
+                                               productionProperties.predictionMode) ||
+                                              (productionProperties.controlMode == WellProducer::WRAT &&
+                                               !productionProperties.predictionMode);
+                if (ok && has_WRAT_control) {
                     if (!phaseUsage.phase_used[BlackoilPhases::Aqua]) {
                         OPM_THROW(std::runtime_error, "Water phase not active and WRAT control specified.");
                     }
@@ -602,7 +610,7 @@ namespace Opm
                     double distr[3] = { 0.0, 0.0, 0.0 };
                     distr[phaseUsage.phase_pos[BlackoilPhases::Aqua]] = 1.0;
                     ok = append_well_controls(SURFACE_RATE,
-                                              -productionProperties.WaterRate, 
+                                              -productionProperties.WaterRate,
                                               invalid_alq,
                                               invalid_vfp,
                                               distr,
@@ -610,7 +618,11 @@ namespace Opm
                                               w_);
                 }
 
-                if (ok && productionProperties.hasProductionControl(WellProducer::GRAT)) {
+                const bool has_GRAT_control = (productionProperties.hasProductionControl(WellProducer::GRAT) &&
+                                               productionProperties.predictionMode) ||
+                                              (productionProperties.controlMode == WellProducer::GRAT &&
+                                               !productionProperties.predictionMode);
+                if (ok && has_GRAT_control) {
                     if (!phaseUsage.phase_used[BlackoilPhases::Vapour]) {
                         OPM_THROW(std::runtime_error, "Gas phase not active and GRAT control specified.");
                     }
@@ -626,7 +638,11 @@ namespace Opm
                                               w_);
                 }
 
-                if (ok && productionProperties.hasProductionControl(WellProducer::LRAT)) {
+                const bool has_LRAT_control = (productionProperties.hasProductionControl(WellProducer::LRAT) &&
+                                               productionProperties.predictionMode) ||
+                                              (productionProperties.controlMode == WellProducer::LRAT &&
+                                               !productionProperties.predictionMode);
+                if (ok && has_LRAT_control) {
                     if (!phaseUsage.phase_used[BlackoilPhases::Aqua]) {
                         OPM_THROW(std::runtime_error, "Water phase not active and LRAT control specified.");
                     }
@@ -646,7 +662,11 @@ namespace Opm
                                               w_);
                 }
 
-                if (ok && productionProperties.hasProductionControl(WellProducer::RESV)) {
+                const bool has_RESV_control = (productionProperties.hasProductionControl(WellProducer::RESV) &&
+                                               productionProperties.predictionMode) ||
+                                              (productionProperties.controlMode == WellProducer::RESV &&
+                                               !productionProperties.predictionMode);
+                if (ok && has_RESV_control) {
                     control_pos[WellsManagerDetail::ProductionControl::RESV] = well_controls_get_num(w_->ctrls[well_index]);
                     double distr[3] = { 1.0, 1.0, 1.0 };
                     ok = append_well_controls(RESERVOIR_RATE,
@@ -658,7 +678,7 @@ namespace Opm
                                               w_);
                 }
 
-                if (ok && productionProperties.hasProductionControl(WellProducer::THP)) {
+                if (ok && productionProperties.hasProductionControl(WellProducer::THP) && productionProperties.predictionMode) {
                     const double thp_limit  = productionProperties.THPLimit;
                     const double alq_value  = productionProperties.ALQValue;
                     const int    vfp_number = productionProperties.VFPTableNumber;
